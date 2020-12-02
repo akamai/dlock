@@ -1,0 +1,14 @@
+recursive-include src *.py
+recursive-include tests *.py
+recursive-include examples Dockerfile
+include src/dlock/py.typed
+include .flake8
+include .isort.cfg
+include LICENSE
+include MANIFEST.in
+include mypy.ini
+include NOTICE
+include pytest.ini
+include README.md
+include setup.py
+include tox.ini
