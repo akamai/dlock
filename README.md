@@ -6,6 +6,8 @@ by locking base images and making upgrades explicit.
 
 Think of `package-lock.json`, `Pipfile.lock`, or `composer.lock` for Docker.
 
+Dlock is hosted at [GitHub](http://github.com/akamai/dlock) and
+it can be installed from [PyPI](https://pypi.org/project/dlock/).
 
 ## Introduction
 
@@ -77,7 +79,7 @@ it forces to you setup a proper policy of regular upgrades.
 Dlock requires Python 3.7 or newer and can be installed using [pip]:
 
 ```shell script
-pip install .
+pip install dlock
 ```
 
 
