@@ -20,7 +20,7 @@ with open("README.md", "r") as fp:
 
 setup(
     name="dlock",
-    version="0.1",
+    version="0.2.dev",
     author="Miloslav Pojman",
     author_email="mpojman@akamai.com",
     description="Locks your Docker dependencies",
