@@ -20,7 +20,6 @@ from dlock.parsing import (
     GenericInstruction,
     InvalidInstruction,
     Token,
-    parse_dockerfile,
     read_dockerfile,
     tokenize_dockerfile,
     write_dockerfile,
@@ -306,22 +305,22 @@ class TestDockerfile:
 
 class TestParseDockerfile:
     """
-    Tests the parse_dockerfile function.
+    Tests the Dockerfile.parse method.
     """
 
     def test_no_line(self):
         """Empty Dockerfile is parsed."""
-        dockerfile = parse_dockerfile([])
+        dockerfile = Dockerfile.parse([])
         assert dockerfile.instructions == []
 
     def test_one_line(self):
         """Dockerfile with one line only is parsed."""
-        dockerfile = parse_dockerfile(["# Comment\n"])
+        dockerfile = Dockerfile.parse(["# Comment\n"])
         assert dockerfile.instructions == [GenericInstruction("# Comment\n")]
 
     def test_multiple_lines(self):
         """Dockerfile with multiple lines is parsed."""
-        dockerfile = parse_dockerfile(["# Comment 1\n", "# Comment 2\n"])
+        dockerfile = Dockerfile.parse(["# Comment 1\n", "# Comment 2\n"])
         assert dockerfile.instructions == [
             GenericInstruction("# Comment 1\n"),
             GenericInstruction("# Comment 2\n"),
@@ -329,30 +328,30 @@ class TestParseDockerfile:
 
     def test_parse_from_inst_wo_name(self):
         """FROM instruction without name is parsed."""
-        dockerfile = parse_dockerfile(["FROM debian"])
+        dockerfile = Dockerfile.parse(["FROM debian"])
         assert dockerfile.instructions == [FromInstruction("debian")]
 
     def test_parse_from_inst_w_name(self):
         """FROM instruction with name is parsed."""
-        dockerfile = parse_dockerfile(["FROM debian AS base"])
+        dockerfile = Dockerfile.parse(["FROM debian AS base"])
         assert dockerfile.instructions == [FromInstruction("debian", "base")]
 
     def test_parse_from_inst_w_platform(self):
         """FROM instruction with platform is parsed."""
-        dockerfile = parse_dockerfile(["FROM --platform=linux/amd64 debian"])
+        dockerfile = Dockerfile.parse(["FROM --platform=linux/amd64 debian"])
         assert dockerfile.instructions == [
             FromInstruction("debian", platform="linux/amd64")
         ]
 
     def test_parse_from_inst_not_formatted(self):
         """FROM instruction is parsed even if not properly formatted."""
-        dockerfile = parse_dockerfile(["From    debian As base"])
+        dockerfile = Dockerfile.parse(["From    debian As base"])
         assert dockerfile.instructions == [FromInstruction("debian", "base")]
 
     def test_parse_from_inst_invalid(self):
         """FROM instruction is not parsed if not valid."""
         with pytest.raises(InvalidInstruction):
-            parse_dockerfile(["FROM"])
+            Dockerfile.parse(["FROM"])
 
     @pytest.mark.parametrize(
         "value",
@@ -365,7 +364,7 @@ class TestParseDockerfile:
     )
     def test_parse_generic_instructions(self, value):
         """Most instruction are treated as unparsed strings."""
-        dockerfile = parse_dockerfile([value])
+        dockerfile = Dockerfile.parse([value])
         assert dockerfile.instructions == [GenericInstruction(value)]
 
 

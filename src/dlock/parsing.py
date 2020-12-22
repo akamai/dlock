@@ -89,6 +89,30 @@ class Token:
         )
 
 
+def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[Token]:
+    """
+    Split Dockerfile to tokens.
+
+    Each token is one instruction, comment, or an empty line.
+    """
+    value = ""
+    for line in itertools.chain(lines, [""]):
+        is_comment = line and _is_comment_or_blank(line)
+        if not is_comment and line.rstrip().endswith("\\"):
+            # Backslash is a line continuation character.
+            is_complete = False
+        elif is_comment and value:
+            # Comments are removed, so they do not terminate an expression.
+            is_complete = False
+        else:
+            # Expression has to be complete if continuation is not indicated.
+            is_complete = True
+        value += line
+        if is_complete and value:
+            yield Token(value)
+            value = ""
+
+
 class InvalidInstruction(Exception):
     """Instruction not understood."""
 
@@ -173,6 +197,14 @@ class GenericInstruction(Instruction):
         return self.value
 
 
+def _parse_tokens(tokens: Iterable[Token]) -> Iterable[Instruction]:
+    for token in tokens:
+        if token.inst == "FROM":
+            yield FromInstruction.from_string(token.code)
+        else:
+            yield GenericInstruction(token.value)
+
+
 @dataclasses.dataclass(frozen=True)
 class Dockerfile:
     """
@@ -187,6 +219,12 @@ class Dockerfile:
     def __str__(self) -> str:
         return self.to_string()
 
+    @classmethod
+    def parse(cls, lines: Iterable[str], *, name: Optional[str] = None) -> Dockerfile:
+        tokens = tokenize_dockerfile(lines)
+        instructions = list(_parse_tokens(tokens))
+        return cls(instructions, name=name)
+
     def to_string(self) -> str:
         return "".join(map(str, self.instructions))
 
@@ -197,53 +235,12 @@ class Dockerfile:
             line_number += instruction.to_string().count("\n")
 
 
-def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[Token]:
-    """
-    Split Dockerfile to tokens.
-
-    Each token is one instruction, comment, or an empty line.
-    """
-    value = ""
-    for line in itertools.chain(lines, [""]):
-        is_comment = line and _is_comment_or_blank(line)
-        if not is_comment and line.rstrip().endswith("\\"):
-            # Backslash is a line continuation character.
-            is_complete = False
-        elif is_comment and value:
-            # Comments are removed, so they do not terminate an expression.
-            is_complete = False
-        else:
-            # Expression has to be complete if continuation is not indicated.
-            is_complete = True
-        value += line
-        if is_complete and value:
-            yield Token(value)
-            value = ""
-
-
-def _parse_tokens(tokens: Iterable[Token]) -> Iterable[Instruction]:
-    for token in tokens:
-        if token.inst == "FROM":
-            yield FromInstruction.from_string(token.code)
-        else:
-            yield GenericInstruction(token.value)
-
-
-def parse_dockerfile(lines: Iterable[str], *, name: Optional[str] = None) -> Dockerfile:
-    """
-    Parse Dockerfile from its lines.
-    """
-    tokens = tokenize_dockerfile(lines)
-    instructions = list(_parse_tokens(tokens))
-    return Dockerfile(instructions, name=name)
-
-
 def read_dockerfile(path: str) -> Dockerfile:
     """
     Read Dockerfile from the given file-system path.
     """
     with open(path) as f:
-        return parse_dockerfile(f, name=path)
+        return Dockerfile.parse(f, name=path)
 
 
 def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
