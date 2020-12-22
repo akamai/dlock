@@ -119,6 +119,17 @@ pytest
 ```
 
 
+## Changelog
+
+### v0.2.dev
+* Add support `--version` argument.
+
+
+### v0.1 (2020-12-02)
+
+* Initial release
+
+
 ## License
 
 ```

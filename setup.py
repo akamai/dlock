@@ -12,15 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
+import re
+
 from setuptools import find_packages, setup
 
-with open("README.md", "r") as fp:
-    long_description = fp.read()
+
+def _read_meta(path):
+    rv = {}
+    with open(path) as fp:
+        for line in fp:
+            match = re.match("__(.*)__ = (.*)", line)
+            if not match:
+                continue
+            key = match.group(1)
+            value = ast.literal_eval(match.group(2))
+            rv[key] = value
+    return rv
+
+
+def _read_file(path):
+    with open(path, "r") as fp:
+        return fp.read()
+
+
+meta = _read_meta("src/dlock/__init__.py")
+long_description = _read_file("README.md")
 
 
 setup(
     name="dlock",
-    version="0.2.dev",
+    version=meta["version"],
     author="Miloslav Pojman",
     author_email="mpojman@akamai.com",
     description="Locks your Docker dependencies",
