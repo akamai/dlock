@@ -225,8 +225,11 @@ class Dockerfile:
         instructions = list(_parse_tokens(tokens))
         return cls(instructions, name=name)
 
+    def serialize(self) -> List[str]:
+        return list(map(str, self.instructions))
+
     def to_string(self) -> str:
-        return "".join(map(str, self.instructions))
+        return "".join(self.serialize())
 
     def with_line_numbers(self) -> Iterable[Tuple[int, Instruction]]:
         line_number = 1
@@ -248,5 +251,4 @@ def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
     Write Dockerfile to the given file-system path.
     """
     with open(path, "w") as f:
-        for instruction in dockerfile.instructions:
-            f.write(instruction.to_string())
+        f.writelines(dockerfile.serialize())

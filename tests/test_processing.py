@@ -17,7 +17,7 @@ import io
 import pytest
 
 from dlock.output import Log
-from dlock.parsing import Dockerfile, FromInstruction, GenericInstruction
+from dlock.parsing import Dockerfile
 from dlock.processing import DockerfileProcessor, Image
 
 
@@ -64,166 +64,166 @@ class TestDockerfileProcessor:
     def test_from(self, resolver, upgrade):
         """FROM instruction is locked."""
         processor = DockerfileProcessor(resolver, upgrade=upgrade)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:7804"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu@sha256:7804\n",
+            "CMD echo 'hello world'\n",
         ]
 
     @pytest.mark.parametrize("upgrade", [False, True])
     def test_from_w_name(self, resolver, upgrade):
         """FROM instruction with name is locked."""
         processor = DockerfileProcessor(resolver, upgrade=upgrade)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu", "runtime"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu AS runtime\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:7804", "runtime"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu@sha256:7804 AS runtime\n",
+            "CMD echo 'hello world'\n",
         ]
 
     @pytest.mark.parametrize("upgrade", [False, True])
     def test_from_w_platform(self, resolver, upgrade):
         """FROM instruction with name is locked."""
         processor = DockerfileProcessor(resolver, upgrade=upgrade)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu", platform="linux/amd64"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM --platform=linux/amd64 ubuntu\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:7804", platform="linux/amd64"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM --platform=linux/amd64 ubuntu@sha256:7804\n",
+            "CMD echo 'hello world'\n",
         ]
 
     @pytest.mark.parametrize("upgrade", [False, True])
     def test_from_w_tag(self, resolver, upgrade):
         """FROM instruction with tag is locked."""
         processor = DockerfileProcessor(resolver, upgrade=upgrade)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu:latest"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu:latest\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu:latest@sha256:abfc"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu:latest@sha256:abfc\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_w_digest_upgrade_false(self, resolver):
         """Existing digest not is upgraded by default."""
         processor = DockerfileProcessor(resolver)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu@sha256:xxxx"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu@sha256:xxxx\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:xxxx"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu@sha256:xxxx\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_w_digest_upgrade_true(self, resolver):
         """Existing digest is upgraded on request."""
         processor = DockerfileProcessor(resolver, upgrade=True)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu@sha256:xxxx"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu@sha256:xxxx\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:7804"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu@sha256:7804\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_w_tag_and_digest_upgrade_false(self, resolver):
         """Tag with digest is not upgrade by default."""
         processor = DockerfileProcessor(resolver)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu:latest@sha256:xxxx"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu:latest@sha256:xxxx\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu:latest@sha256:xxxx"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu:latest@sha256:xxxx\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_w_tag_and_digest_upgrade_true(self, resolver):
         """Tag with digest is upgraded on request."""
         processor = DockerfileProcessor(resolver, upgrade=True)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu:latest@sha256:xxxx"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu:latest@sha256:xxxx\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu:latest@sha256:abfc"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu:latest@sha256:abfc\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_with_arg(self, resolver):
         """Name with variable is not locked."""
         processor = DockerfileProcessor(resolver)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                GenericInstruction("ARG VERSION=latest\n"),
-                FromInstruction("ubuntu:${VERSION}"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "ARG VERSION=latest\n",
+                "FROM ubuntu:${VERSION}\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            GenericInstruction("ARG VERSION=latest\n"),
-            FromInstruction("ubuntu:${VERSION}"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "ARG VERSION=latest\n",
+            "FROM ubuntu:${VERSION}\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_from_scratch(self, resolver):
         """Scratch is not a real image."""
         processor = DockerfileProcessor(resolver)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("scratch"),
+                "FROM scratch\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("scratch"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM scratch\n",
         ]
 
     def test_multi_stage(self, resolver):
         """Name of previous state is not locked."""
         processor = DockerfileProcessor(resolver)
-        dockerfile = Dockerfile(
+        dockerfile = Dockerfile.parse(
             [
-                FromInstruction("ubuntu", "base"),
-                FromInstruction("base"),
-                GenericInstruction("CMD echo 'hello world'\n"),
+                "FROM ubuntu AS base\n",
+                "FROM base\n",
+                "CMD echo 'hello world'\n",
             ]
         )
-        assert processor.update_dockerfile(dockerfile).instructions == [
-            FromInstruction("ubuntu@sha256:7804", "base"),
-            FromInstruction("base"),
-            GenericInstruction("CMD echo 'hello world'\n"),
+        assert processor.update_dockerfile(dockerfile).serialize() == [
+            "FROM ubuntu@sha256:7804 AS base\n",
+            "FROM base\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_output_new_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile([FromInstruction("ubuntu")], name="Dockerfile")
+        dockerfile = Dockerfile.parse(["FROM ubuntu"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu: locked to digest sha256:7804\n"
@@ -233,9 +233,7 @@ class TestDockerfileProcessor:
     def test_output_outdated_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile(
-            [FromInstruction("ubuntu@sha256:xxx")], name="Dockerfile"
-        )
+        dockerfile = Dockerfile.parse(["FROM ubuntu@sha256:xxx"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:xxx: outdated, not upgraded\n"
@@ -246,9 +244,7 @@ class TestDockerfileProcessor:
     def test_output_recent_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile(
-            [FromInstruction("ubuntu@sha256:7804")], name="Dockerfile"
-        )
+        dockerfile = Dockerfile.parse(["FROM ubuntu@sha256:7804"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:7804: up to date\n"
@@ -261,8 +257,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-
-        dockerfile = Dockerfile([FromInstruction("ubuntu")], name="Dockerfile")
+        dockerfile = Dockerfile.parse(["FROM ubuntu"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu: locked to digest sha256:7804\n"
@@ -275,9 +270,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-        dockerfile = Dockerfile(
-            [FromInstruction("ubuntu@sha256:xxx")], name="Dockerfile"
-        )
+        dockerfile = Dockerfile.parse(["FROM ubuntu@sha256:xxx"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:xxx:"
@@ -290,9 +283,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-        dockerfile = Dockerfile(
-            [FromInstruction("ubuntu@sha256:7804")], name="Dockerfile"
-        )
+        dockerfile = Dockerfile.parse(["FROM ubuntu@sha256:7804"], name="Dockerfile")
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:7804: up to date\n"
