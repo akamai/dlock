@@ -26,6 +26,7 @@ from typing import Optional, Sequence
 
 import docker
 
+import dlock
 from dlock.output import Log
 from dlock.parsing import read_dockerfile, write_dockerfile
 from dlock.processing import DockerfileProcessor
@@ -48,6 +49,11 @@ def run(
         prog=prog,
         description="Locks Docker images referenced from a Dockerfile.",
         allow_abbrev=False,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"dlock {dlock.__version__}",
     )
     parser.add_argument(
         "files",
