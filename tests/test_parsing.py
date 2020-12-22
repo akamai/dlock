@@ -214,6 +214,14 @@ class TestFromInstruction:
         inst = FromInstruction.from_string("FROM debian AS base")
         assert inst == FromInstruction("debian", "base")
 
+    def test_from_string_w_platform(self):
+        inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian")
+        assert inst == FromInstruction("debian", platform="linux/amd64")
+
+    def test_from_string_w_name_and_platform(self):
+        inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian AS base")
+        assert inst == FromInstruction("debian", "base", platform="linux/amd64")
+
     def test_from_string_lowercase(self):
         inst = FromInstruction.from_string("from debian AS base")
         assert inst == FromInstruction("debian", "base")
@@ -222,6 +230,24 @@ class TestFromInstruction:
         inst = FromInstruction.from_string("   from   debian   AS   base  ")
         assert inst == FromInstruction("debian", "base")
 
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "",
+            "X",
+            "FROM",
+            "FROM debian AS",
+            "FROM debian X base",
+            "FROM debian AS base X",
+            "FROM --foo=linux/amd64",
+            "FROM --foo=linux/amd64 debian",
+            "FROM --platform=linux/amd64 --foo=1",
+        ],
+    )
+    def test_from_string_invalid(self, code):
+        with pytest.raises(InvalidInstruction):
+            FromInstruction.from_string(code)
+
     def test_to_string(self):
         inst = FromInstruction("debian")
         assert str(inst) == "FROM debian\n"
@@ -229,6 +255,14 @@ class TestFromInstruction:
     def test_to_string_w_name(self):
         inst = FromInstruction("debian", "base")
         assert str(inst) == "FROM debian AS base\n"
+
+    def test_to_string_w_platform(self):
+        inst = FromInstruction("debian", platform="linux/amd64")
+        assert str(inst) == "FROM --platform=linux/amd64 debian\n"
+
+    def test_to_string_w_name_and_plarform(self):
+        inst = FromInstruction("debian", "base", platform="linux/amd64")
+        assert str(inst) == "FROM --platform=linux/amd64 debian AS base\n"
 
 
 class TestGenericInstruction:
@@ -303,24 +337,22 @@ class TestParseDockerfile:
         dockerfile = parse_dockerfile(["FROM debian AS base"])
         assert dockerfile.instructions == [FromInstruction("debian", "base")]
 
+    def test_parse_from_inst_w_platform(self):
+        """FROM instruction with platform is parsed."""
+        dockerfile = parse_dockerfile(["FROM --platform=linux/amd64 debian"])
+        assert dockerfile.instructions == [
+            FromInstruction("debian", platform="linux/amd64")
+        ]
+
     def test_parse_from_inst_not_formatted(self):
         """FROM instruction is parsed even if not properly formatted."""
         dockerfile = parse_dockerfile(["From    debian As base"])
         assert dockerfile.instructions == [FromInstruction("debian", "base")]
 
-    @pytest.mark.parametrize(
-        "code",
-        [
-            "FROM",
-            "FROM debian AS",
-            "FROM debian X base",
-            "FROM debian AS base X",
-        ],
-    )
-    def test_parse_from_inst_invalid(self, code):
+    def test_parse_from_inst_invalid(self):
         """FROM instruction is not parsed if not valid."""
         with pytest.raises(InvalidInstruction):
-            parse_dockerfile([code])
+            parse_dockerfile(["FROM"])
 
     @pytest.mark.parametrize(
         "value",

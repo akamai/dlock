@@ -91,6 +91,21 @@ class TestDockerfileProcessor:
         ]
 
     @pytest.mark.parametrize("upgrade", [False, True])
+    def test_from_w_platform(self, resolver, upgrade):
+        """FROM instruction with name is locked."""
+        processor = DockerfileProcessor(resolver, upgrade=upgrade)
+        dockerfile = Dockerfile(
+            [
+                FromInstruction("ubuntu", platform="linux/amd64"),
+                GenericInstruction("CMD echo 'hello world'\n"),
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).instructions == [
+            FromInstruction("ubuntu@sha256:7804", platform="linux/amd64"),
+            GenericInstruction("CMD echo 'hello world'\n"),
+        ]
+
+    @pytest.mark.parametrize("upgrade", [False, True])
     def test_from_w_tag(self, resolver, upgrade):
         """FROM instruction with tag is locked."""
         processor = DockerfileProcessor(resolver, upgrade=upgrade)

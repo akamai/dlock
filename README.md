@@ -122,7 +122,9 @@ pytest
 ## Changelog
 
 ### v0.2.dev
-* Add support `--version` argument.
+
+* Support for FROM instructions with `--platform` specified.
+* Add a `--version` argument.
 
 
 ### v0.1 (2020-12-02)

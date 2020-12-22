@@ -112,27 +112,47 @@ class Instruction(metaclass=ABCMeta):
 class FromInstruction(Instruction):
     """FROM instruction."""
 
-    # TODO: support the optional platform
-
     base: str
     name: Optional[str] = None
+    platform: Optional[str] = None
 
     @classmethod
     def from_string(cls, s: str) -> FromInstruction:
         parts = s.split()
-        if len(parts) == 2:
-            base = parts[1]
-            name = None
-        elif len(parts) == 4 and parts[2].upper() == "AS":
-            _, base, _, name = parts
-        else:
-            raise InvalidInstruction("FROM instruction not understood.")
-        return FromInstruction(base, name)
+        # FROM ...
+        if not parts or parts[0].upper() != "FROM":
+            raise InvalidInstruction("Not a FROM instruction.")
+        parts = parts[1:]
+        # --platform=...
+        platform = None
+        while parts and parts[0].startswith("--"):
+            if parts[0].startswith("--platform"):
+                platform = parts[0][11:]
+            else:
+                raise InvalidInstruction(f"FROM with an unknown flag: {parts[0]}")
+            parts = parts[1:]
+        # Base image
+        if not parts:
+            raise InvalidInstruction("FROM with too few arguments.")
+        base = parts[0]
+        parts = parts[1:]
+        # Stage name
+        name = None
+        if len(parts) >= 2 and parts[0].upper() == "AS":
+            name = parts[1]
+            parts = parts[2:]
+        # End of line
+        if parts:
+            raise InvalidInstruction("FROM with too many arguments.")
+        return FromInstruction(base, name, platform=platform)
 
     def to_string(self) -> str:
-        parts = ["FROM", self.base]
+        parts = ["FROM"]
+        if self.platform is not None:
+            parts.append(f"--platform={self.platform}")
+        parts.append(self.base)
         if self.name is not None:
-            parts += ["AS", self.name]
+            parts.extend(["AS", self.name])
         return " ".join(parts) + "\n"
 
     def replace(self, *, base: str) -> FromInstruction:
