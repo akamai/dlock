@@ -201,25 +201,43 @@ class TestTokenizeDockerfile:
         ]
 
 
-class TestInstructions:
+class TestFromInstruction:
     """
     Tests Instruction subclasses.
     """
 
-    def test_from_instruction_wo_name(self):
+    def test_from_string(self):
+        inst = FromInstruction.from_string("FROM debian")
+        assert inst == FromInstruction("debian")
+
+    def test_from_string_w_name(self):
+        inst = FromInstruction.from_string("FROM debian AS base")
+        assert inst == FromInstruction("debian", "base")
+
+    def test_from_string_lowercase(self):
+        inst = FromInstruction.from_string("from debian AS base")
+        assert inst == FromInstruction("debian", "base")
+
+    def test_from_string_extra_whitespace(self):
+        inst = FromInstruction.from_string("   from   debian   AS   base  ")
+        assert inst == FromInstruction("debian", "base")
+
+    def test_to_string(self):
         inst = FromInstruction("debian")
         assert str(inst) == "FROM debian\n"
 
-    def test_from_instruction_w_name(self):
+    def test_to_string_w_name(self):
         inst = FromInstruction("debian", "base")
         assert str(inst) == "FROM debian AS base\n"
 
-    def test_generic_instruction(self):
+
+class TestGenericInstruction:
+    def test_to_string(self):
         inst = GenericInstruction("CMD echo \n  'hello world'\n")
         assert str(inst) == "CMD echo \n  'hello world'\n"
 
 
-class TestDockefile:
+class TestDockerfile:
     """
     Tests Dockerfile class.
     """
