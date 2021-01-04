@@ -39,15 +39,16 @@ from typing import Iterable, Mapping, Optional, Type
 #
 
 
-def _is_comment_or_blank(line: str) -> bool:
+def _is_command(line: str) -> bool:
     """
-    Return whether the given line is a Dockerfile comment.
+    Return whether the given line is a command.
 
-    Also returns true for empty lines because empty lines
-    behave similar to comments (e.g. continue a command).
+    Returns False for comments and empty lines.
+    Empty lines behave similar to comments,
+    for example continue a multi-line command.
     """
     stripped = line.strip()
-    return not stripped or stripped.startswith("#")
+    return bool(stripped) and not stripped.startswith("#")
 
 
 def _strip_line(s: str) -> str:
@@ -60,6 +61,27 @@ def _strip_line(s: str) -> str:
     return s
 
 
+def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[str]:
+    """
+    Split Dockerfile to tokens.
+
+    Each token is one instruction, comment, or an empty line.
+    """
+    EOF = ""
+    token = ""
+    for line in itertools.chain(lines, [EOF]):
+        if line == EOF:
+            is_complete = True
+        elif _is_command(line):
+            is_complete = not line.rstrip().endswith("\\")
+        else:
+            is_complete = not token
+        token += line
+        if is_complete and token:
+            yield token
+            token = ""
+
+
 def get_token_cmd(token: str) -> str:
     value = token.strip()
     if not value or value[0] == "#":
@@ -69,32 +91,7 @@ def get_token_cmd(token: str) -> str:
 
 def get_token_code(token: str) -> str:
     lines = token.splitlines()
-    return " ".join(
-        _strip_line(line) for line in lines if not _is_comment_or_blank(line)
-    )
-
-
-def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[str]:
-    """
-    Split Dockerfile to tokens.
-
-    Each token is one instruction, comment, or an empty line.
-    """
-    token = ""
-    for line in itertools.chain(lines, [""]):
-        if not line:
-            # End of file marker
-            is_complete = True
-        elif _is_comment_or_blank(line):
-            # Comments are removed, so they do not terminate an expression.
-            is_complete = not token
-        else:
-            # Backslash is a line continuation character.
-            is_complete = not line.rstrip().endswith("\\")
-        token += line
-        if is_complete and token:
-            yield token
-            token = ""
+    return " ".join(_strip_line(line) for line in lines if _is_command(line))
 
 
 class InvalidInstruction(Exception):
@@ -104,8 +101,6 @@ class InvalidInstruction(Exception):
 class Instruction(metaclass=ABCMeta):
     """
     Base class for Dockerfile instructions.
-
-    Instructions are returned from the second phase of parsing.
     """
 
     def __str__(self) -> str:
