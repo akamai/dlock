@@ -269,7 +269,7 @@ class TestFromInstruction:
         inst = FromInstruction("debian", platform="linux/amd64")
         assert str(inst) == "FROM --platform=linux/amd64 debian\n"
 
-    def test_to_string_w_name_and_plarform(self):
+    def test_to_string_w_name_and_platform(self):
         inst = FromInstruction("debian", "base", platform="linux/amd64")
         assert str(inst) == "FROM --platform=linux/amd64 debian AS base\n"
 
@@ -336,27 +336,10 @@ class TestParseDockerfile:
             GenericInstruction("# Comment 2\n"),
         ]
 
-    def test_parse_from_inst_wo_name(self):
-        """FROM instruction without name is parsed."""
+    def test_parse_from(self):
+        """FROM instruction is parsed."""
         dockerfile = Dockerfile.parse(["FROM debian"])
         assert dockerfile.instructions == [FromInstruction("debian")]
-
-    def test_parse_from_inst_w_name(self):
-        """FROM instruction with name is parsed."""
-        dockerfile = Dockerfile.parse(["FROM debian AS base"])
-        assert dockerfile.instructions == [FromInstruction("debian", "base")]
-
-    def test_parse_from_inst_w_platform(self):
-        """FROM instruction with platform is parsed."""
-        dockerfile = Dockerfile.parse(["FROM --platform=linux/amd64 debian"])
-        assert dockerfile.instructions == [
-            FromInstruction("debian", platform="linux/amd64")
-        ]
-
-    def test_parse_from_inst_not_formatted(self):
-        """FROM instruction is parsed even if not properly formatted."""
-        dockerfile = Dockerfile.parse(["From    debian As base"])
-        assert dockerfile.instructions == [FromInstruction("debian", "base")]
 
     def test_parse_from_inst_invalid(self):
         """FROM instruction is not parsed if not valid."""
