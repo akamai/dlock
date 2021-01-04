@@ -98,11 +98,13 @@ class TestFromInstruction:
 
     def test_from_string_w_platform(self):
         inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian")
-        assert inst == FromInstruction("debian", platform="linux/amd64")
+        assert inst == FromInstruction("debian", flags={"platform": "linux/amd64"})
 
     def test_from_string_w_name_and_platform(self):
         inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian AS base")
-        assert inst == FromInstruction("debian", "base", platform="linux/amd64")
+        assert inst == FromInstruction(
+            "debian", "base", flags={"platform": "linux/amd64"}
+        )
 
     def test_from_string_lowercase(self):
         inst = FromInstruction.from_string("from debian AS base")
@@ -121,9 +123,6 @@ class TestFromInstruction:
             "FROM debian AS",
             "FROM debian X base",
             "FROM debian AS base X",
-            "FROM --foo=linux/amd64",
-            "FROM --foo=linux/amd64 debian",
-            "FROM --platform=linux/amd64 --foo=1",
         ],
     )
     def test_from_string_invalid(self, token):
@@ -139,11 +138,11 @@ class TestFromInstruction:
         assert str(inst) == "FROM debian AS base\n"
 
     def test_to_string_w_platform(self):
-        inst = FromInstruction("debian", platform="linux/amd64")
+        inst = FromInstruction("debian", flags={"platform": "linux/amd64"})
         assert str(inst) == "FROM --platform=linux/amd64 debian\n"
 
     def test_to_string_w_name_and_platform(self):
-        inst = FromInstruction("debian", "base", platform="linux/amd64")
+        inst = FromInstruction("debian", "base", flags={"platform": "linux/amd64"})
         assert str(inst) == "FROM --platform=linux/amd64 debian AS base\n"
 
 

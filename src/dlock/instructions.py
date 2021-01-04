@@ -92,39 +92,28 @@ class FromInstruction(Instruction):
 
     base: str
     name: Optional[str] = None
-    platform: Optional[str] = None
+    flags: Mapping[str, str] = dataclasses.field(default_factory=dict)
 
     @classmethod
     def from_string(cls, token: str) -> FromInstruction:
-        cmd, flags, rest = split_token(token)
+        cmd, flags, args = split_token(token)
         if cmd != "FROM":
             raise InvalidInstruction("Not a FROM instruction.")
-        platform = None
-        for key, token in flags.items():
-            if key == "platform":
-                platform = token
-            else:
-                raise InvalidInstruction(f"FROM with an unknown flag: --{key}")
-        parts = rest.split()
-        # Base image
-        if not parts:
-            raise InvalidInstruction("FROM with too few arguments.")
-        base = parts[0]
-        parts = parts[1:]
-        # Stage name
-        name = None
-        if len(parts) >= 2 and parts[0].upper() == "AS":
-            name = parts[1]
-            parts = parts[2:]
-        # End of line
-        if parts:
-            raise InvalidInstruction("FROM with too many arguments.")
-        return FromInstruction(base, name, platform=platform)
+        parts = args.split()
+        if len(parts) == 1:
+            base = parts[0]
+            name = None
+        elif len(parts) == 3 and parts[1].upper() == "AS":
+            base = parts[0]
+            name = parts[2]
+        else:
+            raise InvalidInstruction("Invalid FROM instruction.")
+        return FromInstruction(base, name, flags=flags)
 
     def to_string(self) -> str:
         parts = ["FROM"]
-        if self.platform is not None:
-            parts.append(f"--platform={self.platform}")
+        for key, value in self.flags.items():
+            parts.append(f"--{key}={value}")
         parts.append(self.base)
         if self.name is not None:
             parts.extend(["AS", self.name])
