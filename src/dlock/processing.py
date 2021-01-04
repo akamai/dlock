@@ -20,14 +20,10 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Optional
 
+from dlock.instructions import CopyInstruction, FromInstruction, Instruction
 from dlock.io import Dockerfile
 from dlock.output import Log
-from dlock.parsing import (
-    CopyInstruction,
-    FromInstruction,
-    Instruction,
-    parse_dockerfile,
-)
+from dlock.parsing import parse_dockerfile
 from dlock.registry import Resolver
 
 
