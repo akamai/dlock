@@ -223,7 +223,7 @@ class TestDockerfileProcessor:
     def test_output_new_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile(["FROM ubuntu"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu: locked to digest sha256:7804\n"
@@ -233,7 +233,7 @@ class TestDockerfileProcessor:
     def test_output_outdated_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile(["FROM ubuntu@sha256:xxx"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu@sha256:xxx"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:xxx: outdated, not upgraded\n"
@@ -244,7 +244,7 @@ class TestDockerfileProcessor:
     def test_output_recent_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
-        dockerfile = Dockerfile(["FROM ubuntu@sha256:7804"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu@sha256:7804"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:7804: up to date\n"
@@ -257,7 +257,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-        dockerfile = Dockerfile(["FROM ubuntu"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu: locked to digest sha256:7804\n"
@@ -270,7 +270,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-        dockerfile = Dockerfile(["FROM ubuntu@sha256:xxx"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu@sha256:xxx"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:xxx:"
@@ -283,7 +283,7 @@ class TestDockerfileProcessor:
         processor = DockerfileProcessor(
             resolver, upgrade=True, log=Log(output, verbosity=5)
         )
-        dockerfile = Dockerfile(["FROM ubuntu@sha256:7804"], name="Dockerfile")
+        dockerfile = Dockerfile(["FROM ubuntu@sha256:7804"])
         processor.update_dockerfile(dockerfile)
         assert output.getvalue() == (
             "Dockerfile, line 1: image ubuntu@sha256:7804: up to date\n"

@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import List, Optional
+from typing import List
 
 
 @dataclasses.dataclass(frozen=True)
@@ -24,20 +24,19 @@ class Dockerfile:
     """
 
     lines: List[str]
-    name: Optional[str] = None
+    name: str = "Dockerfile"
 
+    @classmethod
+    def read(cls, path: str) -> Dockerfile:
+        """
+        Read Dockerfile from the given file-system path.
+        """
+        with open(path) as f:
+            return cls(f.readlines(), name=path)
 
-def read_dockerfile(path: str) -> Dockerfile:
-    """
-    Read Dockerfile from the given file-system path.
-    """
-    with open(path) as f:
-        return Dockerfile(f.readlines(), name=path)
-
-
-def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
-    """
-    Write Dockerfile to the given file-system path.
-    """
-    with open(path, "w") as f:
-        f.writelines(dockerfile.lines)
+    def write(self) -> None:
+        """
+        Write Dockerfile to the given file-system path.
+        """
+        with open(self.name, "w") as f:
+            f.writelines(self.lines)

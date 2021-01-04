@@ -27,7 +27,7 @@ from typing import Optional, Sequence
 import docker
 
 import dlock
-from dlock.io import read_dockerfile, write_dockerfile
+from dlock.io import Dockerfile
 from dlock.output import Log
 from dlock.processing import DockerfileProcessor
 from dlock.registry import DockerResolver, Resolver
@@ -100,7 +100,7 @@ def run(
     processor = DockerfileProcessor(resolver, log=log, upgrade=options.upgrade)
     for file in options.files:
         try:
-            dockerfile = read_dockerfile(file)
+            dockerfile = Dockerfile.read(file)
         except OSError as e:
             log(1, f"{file}: failed to read file: {e.strerror}")
             sys.exit(1)
@@ -111,7 +111,7 @@ def run(
             log(1, f"{file}: dry run, changes not saved")
         else:
             try:
-                write_dockerfile(new_dockerfile, file)
+                new_dockerfile.write()
             except OSError as e:
                 log(1, f"{file}: failed write file: {e.strerror}")
                 sys.exit(1)

@@ -1,16 +1,16 @@
-from dlock.io import Dockerfile, read_dockerfile, write_dockerfile
+from dlock.io import Dockerfile
 
 
-def test_read_dockerfile(resolver, tmp_path):
-    path = tmp_path / "Dockerfile"
-    path.write_text("FROM debian\n")
-    dockerfile = read_dockerfile(path)
-    assert dockerfile.name == path
-    assert dockerfile.lines == ["FROM debian\n"]
+class TestDockerfile:
+    def test_read_dockerfile(self, resolver, tmp_path):
+        path = tmp_path / "Dockerfile"
+        path.write_text("FROM debian\n")
+        dockerfile = Dockerfile.read(path)
+        assert dockerfile.name == path
+        assert dockerfile.lines == ["FROM debian\n"]
 
-
-def test_write_dockerfile(tmp_path):
-    path = tmp_path / "Dockerfile"
-    dockerfile = Dockerfile(["FROM debian\n"], name=path)
-    write_dockerfile(dockerfile, path=dockerfile.name)
-    assert path.read_text() == "FROM debian\n"
+    def test_write_dockerfile(self, tmp_path):
+        path = tmp_path / "Dockerfile"
+        dockerfile = Dockerfile(["FROM debian\n"], name=path)
+        dockerfile.write()
+        assert path.read_text() == "FROM debian\n"
