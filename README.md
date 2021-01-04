@@ -125,6 +125,7 @@ pytest
 
 * Support for FROM instructions with `--platform` specified.
 * Add a `--version` argument.
+* Refactor parsing to preserve more formatting.
 
 
 ### v0.1 (2020-12-02)
