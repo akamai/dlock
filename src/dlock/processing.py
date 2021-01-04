@@ -21,7 +21,7 @@ import dataclasses
 from typing import List, Optional
 
 from dlock.output import Log
-from dlock.parsing import Dockerfile, FromInstruction, Instruction
+from dlock.parsing import Dockerfile, FromInstruction, Instruction, parse_dockerfile
 from dlock.registry import Resolver
 
 
@@ -71,7 +71,7 @@ class ProcessingState:
     """
 
     file_name: str = "<unknown>"
-    line_number: int = 0
+    line_number: int = 1
     stages: List[str] = dataclasses.field(default_factory=list)
 
     #: Count of images that were newly locked
@@ -145,10 +145,14 @@ class DockerfileProcessor:
         self, state: ProcessingState, dockerfile: Dockerfile
     ) -> Dockerfile:
         new_instructions: List[Instruction] = []
-        for state.line_number, instruction in dockerfile.with_line_numbers():
+        instructions = parse_dockerfile(dockerfile.lines)
+        for instruction in instructions:
             new_instruction = self._process_instruction(state, instruction)
             new_instructions.append(new_instruction)
-        return dataclasses.replace(dockerfile, instructions=new_instructions)
+            state.line_number += instruction.to_string().count("\n")
+        return Dockerfile(
+            [i.to_string() for i in new_instructions], name=dockerfile.name
+        )
 
     def _process_instruction(
         self, state: ProcessingState, instruction: Instruction

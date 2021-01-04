@@ -24,7 +24,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional
 
 # Parsing is done in two steps:
 #
@@ -190,6 +190,11 @@ def _parse_tokens(tokens: Iterable[str]) -> Iterable[Instruction]:
             yield GenericInstruction(token)
 
 
+def parse_dockerfile(lines: Iterable[str]) -> Iterable[Instruction]:
+    tokens = tokenize_dockerfile(lines)
+    return _parse_tokens(tokens)
+
+
 @dataclasses.dataclass(frozen=True)
 class Dockerfile:
     """
@@ -198,29 +203,8 @@ class Dockerfile:
     Holds a list of parsed instructions.
     """
 
-    instructions: List[Instruction]
+    lines: List[str]
     name: Optional[str] = None
-
-    def __str__(self) -> str:
-        return self.to_string()
-
-    @classmethod
-    def parse(cls, lines: Iterable[str], *, name: Optional[str] = None) -> Dockerfile:
-        tokens = tokenize_dockerfile(lines)
-        instructions = list(_parse_tokens(tokens))
-        return cls(instructions, name=name)
-
-    def serialize(self) -> List[str]:
-        return list(map(str, self.instructions))
-
-    def to_string(self) -> str:
-        return "".join(self.serialize())
-
-    def with_line_numbers(self) -> Iterable[Tuple[int, Instruction]]:
-        line_number = 1
-        for instruction in self.instructions:
-            yield line_number, instruction
-            line_number += instruction.to_string().count("\n")
 
 
 def read_dockerfile(path: str) -> Dockerfile:
@@ -228,7 +212,7 @@ def read_dockerfile(path: str) -> Dockerfile:
     Read Dockerfile from the given file-system path.
     """
     with open(path) as f:
-        return Dockerfile.parse(f, name=path)
+        return Dockerfile(f.readlines(), name=path)
 
 
 def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
@@ -236,4 +220,4 @@ def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
     Write Dockerfile to the given file-system path.
     """
     with open(path, "w") as f:
-        f.writelines(dockerfile.serialize())
+        f.writelines(dockerfile.lines)

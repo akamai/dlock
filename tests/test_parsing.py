@@ -21,6 +21,7 @@ from dlock.parsing import (
     InvalidInstruction,
     get_token_cmd,
     get_token_code,
+    parse_dockerfile,
     read_dockerfile,
     tokenize_dockerfile,
     write_dockerfile,
@@ -280,71 +281,38 @@ class TestGenericInstruction:
         assert str(inst) == "CMD echo \n  'hello world'\n"
 
 
-class TestDockerfile:
-    """
-    Tests Dockerfile class.
-    """
-
-    def test_to_string(self):
-        instructions = [
-            FromInstruction("debian"),
-            GenericInstruction("RUN \\\n  echo 'hello world'\n"),
-            GenericInstruction("RUN \\\n  echo '!!!'\n"),
-        ]
-
-        assert Dockerfile(instructions).to_string() == (
-            "FROM debian\n"
-            "RUN \\\n"
-            "  echo 'hello world'\n"
-            "RUN \\\n"
-            "  echo '!!!'\n"
-        )
-
-    def test_line_numbers(self):
-        instructions = [
-            FromInstruction("debian"),
-            GenericInstruction("RUN \\\n  echo 'hello world'\n"),
-            GenericInstruction("RUN \\\n  echo '!!!'\n"),
-        ]
-        assert list(Dockerfile(instructions).with_line_numbers()) == [
-            (1, instructions[0]),
-            (2, instructions[1]),
-            (4, instructions[2]),
-        ]
-
-
 class TestParseDockerfile:
     """
-    Tests the Dockerfile.parse method.
+    Tests the parse_dockerfile function.
     """
 
     def test_no_line(self):
         """Empty Dockerfile is parsed."""
-        dockerfile = Dockerfile.parse([])
-        assert dockerfile.instructions == []
+        instructions = parse_dockerfile([])
+        assert list(instructions) == []
 
     def test_one_line(self):
         """Dockerfile with one line only is parsed."""
-        dockerfile = Dockerfile.parse(["# Comment\n"])
-        assert dockerfile.instructions == [GenericInstruction("# Comment\n")]
+        instructions = parse_dockerfile(["# Comment\n"])
+        assert list(instructions) == [GenericInstruction("# Comment\n")]
 
     def test_multiple_lines(self):
         """Dockerfile with multiple lines is parsed."""
-        dockerfile = Dockerfile.parse(["# Comment 1\n", "# Comment 2\n"])
-        assert dockerfile.instructions == [
+        instructions = parse_dockerfile(["# Comment 1\n", "# Comment 2\n"])
+        assert list(instructions) == [
             GenericInstruction("# Comment 1\n"),
             GenericInstruction("# Comment 2\n"),
         ]
 
     def test_parse_from(self):
         """FROM instruction is parsed."""
-        dockerfile = Dockerfile.parse(["FROM debian"])
-        assert dockerfile.instructions == [FromInstruction("debian")]
+        instructions = parse_dockerfile(["FROM debian"])
+        assert list(instructions) == [FromInstruction("debian")]
 
     def test_parse_from_inst_invalid(self):
         """FROM instruction is not parsed if not valid."""
         with pytest.raises(InvalidInstruction):
-            Dockerfile.parse(["FROM"])
+            list(parse_dockerfile(["FROM"]))
 
     @pytest.mark.parametrize(
         "value",
@@ -357,8 +325,8 @@ class TestParseDockerfile:
     )
     def test_parse_generic_instructions(self, value):
         """Most instruction are treated as unparsed strings."""
-        dockerfile = Dockerfile.parse([value])
-        assert dockerfile.instructions == [GenericInstruction(value)]
+        instructions = parse_dockerfile([value])
+        assert list(instructions) == [GenericInstruction(value)]
 
 
 def test_read_dockerfile(resolver, tmp_path):
@@ -366,11 +334,11 @@ def test_read_dockerfile(resolver, tmp_path):
     path.write_text("FROM debian\n")
     dockerfile = read_dockerfile(path)
     assert dockerfile.name == path
-    assert dockerfile.instructions == [FromInstruction("debian")]
+    assert dockerfile.lines == ["FROM debian\n"]
 
 
 def test_write_dockerfile(tmp_path):
     path = tmp_path / "Dockerfile"
-    dockerfile = Dockerfile([FromInstruction("debian")])
-    write_dockerfile(dockerfile, path)
+    dockerfile = Dockerfile(["FROM debian\n"], name=path)
+    write_dockerfile(dockerfile, path=dockerfile.name)
     assert path.read_text() == "FROM debian\n"
