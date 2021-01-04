@@ -121,6 +121,11 @@ pytest
 
 ## Changelog
 
+### v0.3.dev
+
+* ...
+
+
 ### v0.2 (2020-01-04)
 
 * Add a `--version` argument.
