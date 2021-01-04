@@ -121,7 +121,7 @@ pytest
 
 ## Changelog
 
-### v0.2.dev
+### v0.2 (2020-01-04)
 
 * Add a `--version` argument.
 * Lock dependencies referenced in `COPY --from=...`
