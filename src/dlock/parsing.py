@@ -122,7 +122,7 @@ class Instruction(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def from_string(cls, value: str) -> Instruction:
+    def from_string(cls, token: str) -> Instruction:
         """Parse an instruction from a string."""
 
     @abstractmethod
@@ -139,14 +139,14 @@ class FromInstruction(Instruction):
     platform: Optional[str] = None
 
     @classmethod
-    def from_string(cls, value: str) -> FromInstruction:
-        cmd, flags, rest = split_token(value)
+    def from_string(cls, token: str) -> FromInstruction:
+        cmd, flags, rest = split_token(token)
         if cmd != "FROM":
             raise InvalidInstruction("Not a FROM instruction.")
         platform = None
-        for key, value in flags.items():
+        for key, token in flags.items():
             if key == "platform":
-                platform = value
+                platform = token
             else:
                 raise InvalidInstruction(f"FROM with an unknown flag: --{key}")
         parts = rest.split()
@@ -179,6 +179,31 @@ class FromInstruction(Instruction):
 
 
 @dataclasses.dataclass(frozen=True)
+class CopyInstruction(Instruction):
+
+    args: str
+    flags: Mapping[str, str] = dataclasses.field(default_factory=dict)
+
+    @classmethod
+    def from_string(cls, token: str) -> Instruction:
+        cmd, flags, args = split_token(token)
+        if cmd != "COPY":
+            raise InvalidInstruction("Not a COPY instruction.")
+        return cls(args, flags)
+
+    def to_string(self) -> str:
+        parts = ["COPY"]
+        for key, value in self.flags.items():
+            parts.append(f"--{key}={value}")
+        parts.append(self.args)
+        return " ".join(parts) + "\n"
+
+    def replace(self, *, from_image: str) -> CopyInstruction:
+        flags = {**self.flags, "from": from_image}
+        return dataclasses.replace(self, flags=flags)
+
+
+@dataclasses.dataclass(frozen=True)
 class GenericInstruction(Instruction):
     """
     Instruction that we do not need to parse.
@@ -189,8 +214,8 @@ class GenericInstruction(Instruction):
     value: str
 
     @classmethod
-    def from_string(cls, value: str) -> GenericInstruction:
-        return cls(value)
+    def from_string(cls, token: str) -> GenericInstruction:
+        return cls(token)
 
     def to_string(self) -> str:
         return self.value
@@ -198,6 +223,7 @@ class GenericInstruction(Instruction):
 
 INSTRUCTION_TYPES: Mapping[str, Type[Instruction]] = {
     "FROM": FromInstruction,
+    "COPY": CopyInstruction,
 }
 
 

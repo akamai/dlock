@@ -15,6 +15,7 @@
 import pytest
 
 from dlock.parsing import (
+    CopyInstruction,
     FromInstruction,
     GenericInstruction,
     InvalidInstruction,
@@ -218,7 +219,7 @@ class TestTokenizeDockerfile:
 
 class TestFromInstruction:
     """
-    Tests Instruction subclasses.
+    Tests the FromInstruction class.
     """
 
     def test_from_string(self):
@@ -246,7 +247,7 @@ class TestFromInstruction:
         assert inst == FromInstruction("debian", "base")
 
     @pytest.mark.parametrize(
-        "code",
+        "token",
         [
             "",
             "X",
@@ -259,9 +260,9 @@ class TestFromInstruction:
             "FROM --platform=linux/amd64 --foo=1",
         ],
     )
-    def test_from_string_invalid(self, code):
+    def test_from_string_invalid(self, token):
         with pytest.raises(InvalidInstruction):
-            FromInstruction.from_string(code)
+            FromInstruction.from_string(token)
 
     def test_to_string(self):
         inst = FromInstruction("debian")
@@ -278,6 +279,58 @@ class TestFromInstruction:
     def test_to_string_w_name_and_platform(self):
         inst = FromInstruction("debian", "base", platform="linux/amd64")
         assert str(inst) == "FROM --platform=linux/amd64 debian AS base\n"
+
+
+class TestCopyInstruction:
+    """Tests the CopyInstruction class."""
+
+    def test_from_string(self):
+        inst = CopyInstruction.from_string("COPY src dst\n")
+        assert inst == CopyInstruction("src dst")
+
+    def test_from_string_json(self):
+        inst = CopyInstruction.from_string('COPY ["src dir", "dst dir"]\n')
+        assert inst == CopyInstruction('["src dir", "dst dir"]')
+
+    def test_from_string_with_flag(self):
+        inst = CopyInstruction.from_string("COPY --from=base src dst\n")
+        assert inst == CopyInstruction("src dst", flags={"from": "base"})
+
+    def test_from_string_lowercase(self):
+        inst = CopyInstruction.from_string("copy src dst\n")
+        assert inst == CopyInstruction("src dst")
+
+    def test_from_string_extra_whitespace(self):
+        inst = CopyInstruction.from_string("COPY   src   dst\n")
+        assert inst == CopyInstruction("src   dst")
+
+    @pytest.mark.parametrize(
+        "token",
+        [
+            "",
+            "X",
+        ],
+    )
+    def test_from_string_invalid(self, token):
+        with pytest.raises(InvalidInstruction):
+            CopyInstruction.from_string(token)
+
+    def test_to_string(self):
+        inst = CopyInstruction("src dst")
+        assert str(inst) == "COPY src dst\n"
+
+    def test_to_string_json(self):
+        inst = CopyInstruction('["src dir", "dst dir"]')
+        assert str(inst) == 'COPY ["src dir", "dst dir"]\n'
+
+    def test_to_string_with_flag(self):
+        inst = CopyInstruction("src dst", flags={"from": "base"})
+        assert str(inst) == "COPY --from=base src dst\n"
+
+    def test_replace(self):
+        orig_inst = CopyInstruction("src dst", flags={"from": "base"})
+        inst = orig_inst.replace(from_image="base@xxxx")
+        assert inst == CopyInstruction("src dst", flags={"from": "base@xxxx"})
 
 
 class TestGenericInstruction:
@@ -314,10 +367,15 @@ class TestParseDockerfile:
         nodes = parse_dockerfile(["FROM debian"])
         assert [n.inst for n in nodes] == [FromInstruction("debian")]
 
-    def test_parse_from_inst_invalid(self):
+    def test_parse_from_invalid(self):
         """FROM instruction is not parsed if not valid."""
         with pytest.raises(InvalidInstruction):
             list(parse_dockerfile(["FROM"]))
+
+    def test_parse_copy(self):
+        """FROM instruction is parsed."""
+        nodes = parse_dockerfile(["COPY src dst"])
+        assert [n.inst for n in nodes] == [CopyInstruction("src dst")]
 
     @pytest.mark.parametrize(
         "value",
