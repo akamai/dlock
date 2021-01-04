@@ -236,6 +236,58 @@ class TestDockerfileProcessor:
             "    ubuntu@sha256:xxxx\n",
         ]
 
+    def test_copy_wo_from(self, resolver):
+        processor = DockerfileProcessor(resolver)
+        dockerfile = Dockerfile(
+            [
+                "COPY src dst\n",
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).lines == [
+            "COPY src dst\n",
+        ]
+
+    def test_copy_w_from(self, resolver):
+        processor = DockerfileProcessor(resolver)
+        dockerfile = Dockerfile(
+            [
+                "COPY --from=ubuntu src dst\n",
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).lines == [
+            "COPY --from=ubuntu@sha256:7804 src dst\n",
+        ]
+
+    def test_copy_w_from_multistage(self, resolver):
+        processor = DockerfileProcessor(resolver)
+        dockerfile = Dockerfile(
+            [
+                "FROM ubuntu AS base\n",
+                "FROM ubuntu\n",
+                "COPY --from=base src dst\n",
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).lines == [
+            "FROM ubuntu@sha256:7804 AS base\n",
+            "FROM ubuntu@sha256:7804\n",
+            "COPY --from=base src dst\n",
+        ]
+
+    def test_copy_comments_and_whitespace_preserved(self, resolver):
+        processor = DockerfileProcessor(resolver)
+        dockerfile = Dockerfile(
+            [
+                "COPY \\\n",
+                "    # Example comment\n",
+                "    src dst\n",
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).lines == [
+            "COPY \\\n",
+            "    # Example comment\n",
+            "    src dst\n",
+        ]
+
     def test_output_new_image_upgrade_false(self, resolver):
         output = io.StringIO()
         processor = DockerfileProcessor(resolver, log=Log(output, verbosity=5))
