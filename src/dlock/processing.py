@@ -122,7 +122,7 @@ class DockerfileProcessor:
         state = ProcessingState()
         if dockerfile.name is not None:
             state.file_name = dockerfile.name
-        new_dockerfile = self._process_dockerfile(state, dockerfile)
+        new_lines = self._process_lines(state, dockerfile.lines)
 
         # Report summary of changes.
         # To ensure that at least one line of output is generated,
@@ -140,35 +140,33 @@ class DockerfileProcessor:
         if state.keep_count:
             count = _count_images(state.keep_count)
             self._log(1, f"{state.file_name}: {count} outdated, not upgraded")
-        return new_dockerfile
+        return Dockerfile(new_lines, name=dockerfile.name)
 
-    def _process_dockerfile(
-        self, state: ProcessingState, dockerfile: Dockerfile
-    ) -> Dockerfile:
-        new_instructions: List[Instruction] = []
-        instructions = parse_dockerfile(dockerfile.lines)
-        for instruction in instructions:
-            new_instruction = self._process_instruction(state, instruction)
-            new_instructions.append(new_instruction)
-            state.line_number += instruction.to_string().count("\n")
-        return Dockerfile(
-            [i.to_string() for i in new_instructions], name=dockerfile.name
-        )
+    def _process_lines(self, state: ProcessingState, lines: List[str]) -> List[str]:
+        new_lines = []
+        for node in parse_dockerfile(lines):
+            state.line_number = node.lineno
+            new_inst = self._process_instruction(state, node.inst)
+            # If an instruction was not updated, return its original
+            # text value to preserve formatting details.
+            code = node.orig if new_inst == node.inst else new_inst.to_string()
+            new_lines += code.splitlines(keepends=True)
+        return new_lines
 
     def _process_instruction(
-        self, state: ProcessingState, instruction: Instruction
+        self, state: ProcessingState, inst: Instruction
     ) -> Instruction:
-        if isinstance(instruction, FromInstruction):
-            return self._process_from_instruction(state, instruction)
-        return instruction
+        if isinstance(inst, FromInstruction):
+            return self._process_from_instruction(state, inst)
+        return inst
 
     def _process_from_instruction(
-        self, state: ProcessingState, instruction: FromInstruction
+        self, state: ProcessingState, inst: FromInstruction
     ) -> Instruction:
-        new_base = self._process_ref(state, instruction.base)
-        if instruction.name is not None:
-            state.stages.append(instruction.name)
-        return instruction.replace(base=new_base)
+        new_base = self._process_ref(state, inst.base)
+        if inst.name is not None:
+            state.stages.append(inst.name)
+        return inst.replace(base=new_base)
 
     def _process_ref(self, state: ProcessingState, ref: str) -> str:
         position = f"{state.position}: image {ref}"

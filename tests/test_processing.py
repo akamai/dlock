@@ -204,7 +204,7 @@ class TestDockerfileProcessor:
             "FROM scratch\n",
         ]
 
-    def test_multi_stage(self, resolver):
+    def test_from_multi_stage(self, resolver):
         """Name of previous state is not locked."""
         processor = DockerfileProcessor(resolver)
         dockerfile = Dockerfile(
@@ -218,6 +218,22 @@ class TestDockerfileProcessor:
             "FROM ubuntu@sha256:7804 AS base\n",
             "FROM base\n",
             "CMD echo 'hello world'\n",
+        ]
+
+    def test_from_comments_and_whitespace_preserved(self, resolver):
+        """When an instruction is not changed, its formatting is preserved."""
+        processor = DockerfileProcessor(resolver)
+        dockerfile = Dockerfile(
+            [
+                "FROM \\\n",
+                "    # Example comment\n",
+                "    ubuntu@sha256:xxxx\n",
+            ]
+        )
+        assert processor.update_dockerfile(dockerfile).lines == [
+            "FROM \\\n",
+            "    # Example comment\n",
+            "    ubuntu@sha256:xxxx\n",
         ]
 
     def test_output_new_image_upgrade_false(self, resolver):

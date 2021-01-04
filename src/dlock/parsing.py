@@ -24,7 +24,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional, Type
 
 # Parsing is done in two steps:
 #
@@ -111,9 +111,14 @@ class Instruction(metaclass=ABCMeta):
     def __str__(self) -> str:
         return self.to_string()
 
+    @classmethod
+    @abstractmethod
+    def from_string(cls, value: str) -> Instruction:
+        """Parse an instruction from a string."""
+
     @abstractmethod
     def to_string(self) -> str:
-        """Return this instruction written to Dockerfile."""
+        """Serialize this instruction to a string."""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -177,19 +182,36 @@ class GenericInstruction(Instruction):
 
     value: str
 
+    @classmethod
+    def from_string(cls, value: str) -> GenericInstruction:
+        return cls(value)
+
     def to_string(self) -> str:
         return self.value
 
 
-def _parse_tokens(tokens: Iterable[str]) -> Iterable[Instruction]:
-    for token in tokens:
+INSTRUCTION_TYPES: Mapping[str, Type[Instruction]] = {
+    "FROM": FromInstruction,
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class Node:
+    """Parsed instruction with some info about parsing."""
+
+    inst: Instruction
+    lineno: int
+    orig: str
+
+
+def parse_dockerfile(lines: Iterable[str]) -> Iterable[Node]:
+    """
+    Parse Dockerfile to nodes with instructions.
+    """
+    lineno = 1
+    for token in tokenize_dockerfile(lines):
         cmd = get_token_cmd(token)
-        if cmd == "FROM":
-            yield FromInstruction.from_string(token)
-        else:
-            yield GenericInstruction(token)
-
-
-def parse_dockerfile(lines: Iterable[str]) -> Iterable[Instruction]:
-    tokens = tokenize_dockerfile(lines)
-    return _parse_tokens(tokens)
+        inst_cls = INSTRUCTION_TYPES.get(cmd, GenericInstruction)
+        inst = inst_cls.from_string(token)
+        yield Node(inst, lineno, token)
+        lineno += token.count("\n")

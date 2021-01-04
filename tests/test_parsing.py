@@ -285,26 +285,26 @@ class TestParseDockerfile:
 
     def test_no_line(self):
         """Empty Dockerfile is parsed."""
-        instructions = parse_dockerfile([])
-        assert list(instructions) == []
+        nodes = parse_dockerfile([])
+        assert list(nodes) == []
 
     def test_one_line(self):
         """Dockerfile with one line only is parsed."""
-        instructions = parse_dockerfile(["# Comment\n"])
-        assert list(instructions) == [GenericInstruction("# Comment\n")]
+        nodes = parse_dockerfile(["# Comment\n"])
+        assert [n.inst for n in nodes] == [GenericInstruction("# Comment\n")]
 
     def test_multiple_lines(self):
         """Dockerfile with multiple lines is parsed."""
-        instructions = parse_dockerfile(["# Comment 1\n", "# Comment 2\n"])
-        assert list(instructions) == [
+        nodes = parse_dockerfile(["# Comment 1\n", "# Comment 2\n"])
+        assert [n.inst for n in nodes] == [
             GenericInstruction("# Comment 1\n"),
             GenericInstruction("# Comment 2\n"),
         ]
 
     def test_parse_from(self):
         """FROM instruction is parsed."""
-        instructions = parse_dockerfile(["FROM debian"])
-        assert list(instructions) == [FromInstruction("debian")]
+        nodes = parse_dockerfile(["FROM debian"])
+        assert [n.inst for n in nodes] == [FromInstruction("debian")]
 
     def test_parse_from_inst_invalid(self):
         """FROM instruction is not parsed if not valid."""
@@ -322,5 +322,5 @@ class TestParseDockerfile:
     )
     def test_parse_generic_instructions(self, value):
         """Most instruction are treated as unparsed strings."""
-        instructions = parse_dockerfile([value])
-        assert list(instructions) == [GenericInstruction(value)]
+        nodes = parse_dockerfile([value])
+        assert [n.inst for n in nodes] == [GenericInstruction(value)]
