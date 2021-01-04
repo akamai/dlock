@@ -19,20 +19,21 @@ from dlock.parsing import (
     FromInstruction,
     GenericInstruction,
     InvalidInstruction,
-    Token,
+    get_token_cmd,
+    get_token_code,
     read_dockerfile,
     tokenize_dockerfile,
     write_dockerfile,
 )
 
 
-class TestToken:
+class TestTokenHelpers:
     """
     Tests the Token class.
     """
 
     @pytest.mark.parametrize(
-        "value",
+        "token",
         [
             "",
             "  ",
@@ -40,26 +41,24 @@ class TestToken:
             "  \n",
         ],
     )
-    def test_empty(self, value):
-        token = Token(value)
-        assert token.inst == ""
-        assert token.code == ""
+    def test_empty(self, token):
+        assert get_token_cmd(token) == ""
+        assert get_token_code(token) == ""
 
     @pytest.mark.parametrize(
-        "value",
+        "token",
         [
             "# Comment",
             "# Comment\n",
             "  # Comment\n",
         ],
     )
-    def test_comment(self, value):
-        token = Token(value)
-        assert token.inst == ""
-        assert token.code == ""
+    def test_comment(self, token):
+        assert get_token_cmd(token) == ""
+        assert get_token_code(token) == ""
 
     @pytest.mark.parametrize(
-        "value",
+        "token",
         [
             "FROM",
             "FROM\n",
@@ -71,13 +70,12 @@ class TestToken:
             "FROM debian \\\n  # Comment \n AS base\n",
         ],
     )
-    def test_inst(self, value):
-        token = Token(value)
-        assert token.inst == "FROM"
+    def test_get_token_cmd(self, token):
+        assert get_token_cmd(token) == "FROM"
 
-    def test_code(self):
-        token = Token("FROM debian \\\n  # Comment \n  AS base\n")
-        assert token.code == "FROM debian   AS base"
+    def test_get_token_code(self):
+        code = get_token_code("FROM debian \\\n  # Comment \n  AS base\n")
+        assert code == "FROM debian AS base"
 
 
 class TestTokenizeDockerfile:
@@ -92,27 +90,27 @@ class TestTokenizeDockerfile:
     def test_tokenize_one_line_wo_trailing_newline(self):
         """Dockerfile with one line only, no new line at the end of file."""
         lines = ["# Comment"]
-        assert list(tokenize_dockerfile(lines)) == [Token("# Comment")]
+        assert list(tokenize_dockerfile(lines)) == ["# Comment"]
 
     def test_tokenize_one_line_w_trailing_newline(self):
         """Dockerfile with one line only, with new line at the end of file."""
         lines = ["# Comment\n"]
-        assert list(tokenize_dockerfile(lines)) == [Token("# Comment\n")]
+        assert list(tokenize_dockerfile(lines)) == ["# Comment\n"]
 
     def test_tokenize_multiple_lines_wo_trailing_newline(self):
         """Dockerfile with multiple lines, no new line at the end of file."""
         lines = ["# Comment 1\n", "# Comment 2"]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("# Comment 1\n"),
-            Token("# Comment 2"),
+            "# Comment 1\n",
+            "# Comment 2",
         ]
 
     def test_tokenize_multiple_lines_w_trailing_newline(self):
         """Dockerfile with multiple lines, with new line at the end of file."""
         lines = ["# Comment 1\n", "# Comment 2\n"]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("# Comment 1\n"),
-            Token("# Comment 2\n"),
+            "# Comment 1\n",
+            "# Comment 2\n",
         ]
 
     def test_tokenize_misc(self):
@@ -124,10 +122,10 @@ class TestTokenizeDockerfile:
             "CMD echo 'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("FROM debian\n"),
-            Token("\n"),
-            Token("# Example comment\n"),
-            Token("CMD echo 'hello world'\n"),
+            "FROM debian\n",
+            "\n",
+            "# Example comment\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_tokenize_with_leading_whitespace(self):
@@ -137,7 +135,7 @@ class TestTokenizeDockerfile:
         ]
 
         assert list(tokenize_dockerfile(lines)) == [
-            Token("  FROM debian\n"),
+            "  FROM debian\n",
         ]
 
     def test_tokenize_with_trailing_whitespace(self):
@@ -147,7 +145,7 @@ class TestTokenizeDockerfile:
         ]
 
         assert list(tokenize_dockerfile(lines)) == [
-            Token("FROM debian  \n"),
+            "FROM debian  \n",
         ]
 
     def test_tokenize_lowercase_instruction(self):
@@ -156,7 +154,7 @@ class TestTokenizeDockerfile:
             "from debian\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("from debian\n"),
+            "from debian\n",
         ]
 
     def test_tokenize_comment_with_trailing_slash(self):
@@ -166,8 +164,8 @@ class TestTokenizeDockerfile:
             "CMD echo 'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("# Example comment\\\n"),
-            Token("CMD echo 'hello world'\n"),
+            "# Example comment\\\n",
+            "CMD echo 'hello world'\n",
         ]
 
     def test_tokenize_trailing_slash(self):
@@ -177,7 +175,7 @@ class TestTokenizeDockerfile:
             "  'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("CMD echo \\\n  'hello world'\n"),
+            "CMD echo \\\n  'hello world'\n",
         ]
 
     def test_tokenize_trailing_slash_followed_by_empty_line(self):
@@ -188,7 +186,7 @@ class TestTokenizeDockerfile:
             "  'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("CMD echo \\\n\n  'hello world'\n"),
+            "CMD echo \\\n\n  'hello world'\n",
         ]
 
     def test_tokenize_trailing_slash_at_last_line(self):
@@ -197,7 +195,7 @@ class TestTokenizeDockerfile:
             "CMD echo \\\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("CMD echo \\\n"),
+            "CMD echo \\\n",
         ]
 
     def test_tokenize_trailing_slash_followed_by_comment(self):
@@ -208,7 +206,7 @@ class TestTokenizeDockerfile:
             "  'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
-            Token("CMD echo \\\n  # Comment\n  'hello world'\n"),
+            "CMD echo \\\n  # Comment\n  'hello world'\n",
         ]
 
 

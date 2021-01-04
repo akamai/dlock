@@ -50,66 +50,51 @@ def _is_comment_or_blank(line: str) -> bool:
     return not stripped or stripped.startswith("#")
 
 
-def _rstrip_slash(s: str) -> str:
+def _strip_line(s: str) -> str:
     """
-    Remove a possible slash at the end of line.
+    Strip whitespace and a possible trailing slash at the end of line.
     """
-    s = s.rstrip()
+    s = s.strip()
     if s.endswith("\\"):
-        s = s[:-1]
+        s = s[:-1].rstrip()
     return s
 
 
-@dataclasses.dataclass(frozen=True)
-class Token:
-    """
-    Token in a Docker file.
-
-    Tokens are returned from the first phase of parsing.
-    Each token corresponds to one instruction, a comment, or an empty line.
-    """
-
-    value: str
-
-    def __str__(self) -> str:
-        return self.value
-
-    @property
-    def inst(self) -> str:
-        value = self.value.strip()
-        if not value or value[0] == "#":
-            return ""
-        return value.split()[0].upper()
-
-    @property
-    def code(self) -> str:
-        lines = self.value.splitlines()
-        return "".join(
-            _rstrip_slash(line) for line in lines if not _is_comment_or_blank(line)
-        )
+def get_token_cmd(token: str) -> str:
+    value = token.strip()
+    if not value or value[0] == "#":
+        return ""
+    return value.split()[0].upper()
 
 
-def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[Token]:
+def get_token_code(token: str) -> str:
+    lines = token.splitlines()
+    return " ".join(
+        _strip_line(line) for line in lines if not _is_comment_or_blank(line)
+    )
+
+
+def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[str]:
     """
     Split Dockerfile to tokens.
 
     Each token is one instruction, comment, or an empty line.
     """
-    token_value = ""
+    token = ""
     for line in itertools.chain(lines, [""]):
         if not line:
             # End of file marker
             is_complete = True
         elif _is_comment_or_blank(line):
             # Comments are removed, so they do not terminate an expression.
-            is_complete = not token_value
+            is_complete = not token
         else:
             # Backslash is a line continuation character.
             is_complete = not line.rstrip().endswith("\\")
-        token_value += line
-        if is_complete and token_value:
-            yield Token(token_value)
-            token_value = ""
+        token += line
+        if is_complete and token:
+            yield token
+            token = ""
 
 
 class InvalidInstruction(Exception):
@@ -140,8 +125,8 @@ class FromInstruction(Instruction):
     platform: Optional[str] = None
 
     @classmethod
-    def from_string(cls, s: str) -> FromInstruction:
-        parts = s.split()
+    def from_string(cls, value: str) -> FromInstruction:
+        parts = get_token_code(value).split()
         # FROM ...
         if not parts or parts[0].upper() != "FROM":
             raise InvalidInstruction("Not a FROM instruction.")
@@ -196,12 +181,13 @@ class GenericInstruction(Instruction):
         return self.value
 
 
-def _parse_tokens(tokens: Iterable[Token]) -> Iterable[Instruction]:
+def _parse_tokens(tokens: Iterable[str]) -> Iterable[Instruction]:
     for token in tokens:
-        if token.inst == "FROM":
-            yield FromInstruction.from_string(token.code)
+        cmd = get_token_cmd(token)
+        if cmd == "FROM":
+            yield FromInstruction.from_string(token)
         else:
-            yield GenericInstruction(token.value)
+            yield GenericInstruction(token)
 
 
 @dataclasses.dataclass(frozen=True)
