@@ -89,17 +89,17 @@ class TestTokenizeDockerfile:
         """Empty docker file."""
         assert list(tokenize_dockerfile([])) == []
 
-    def test_tokenize_one_line_wo_traling_newline(self):
+    def test_tokenize_one_line_wo_trailing_newline(self):
         """Dockerfile with one line only, no new line at the end of file."""
         lines = ["# Comment"]
         assert list(tokenize_dockerfile(lines)) == [Token("# Comment")]
 
-    def test_tokenize_one_line_w_traling_newline(self):
+    def test_tokenize_one_line_w_trailing_newline(self):
         """Dockerfile with one line only, with new line at the end of file."""
         lines = ["# Comment\n"]
         assert list(tokenize_dockerfile(lines)) == [Token("# Comment\n")]
 
-    def test_tokenize_multiple_lines_wo_traling_newline(self):
+    def test_tokenize_multiple_lines_wo_trailing_newline(self):
         """Dockerfile with multiple lines, no new line at the end of file."""
         lines = ["# Comment 1\n", "# Comment 2"]
         assert list(tokenize_dockerfile(lines)) == [
@@ -107,7 +107,7 @@ class TestTokenizeDockerfile:
             Token("# Comment 2"),
         ]
 
-    def test_tokenize_multiple_lines_w_traling_newline(self):
+    def test_tokenize_multiple_lines_w_trailing_newline(self):
         """Dockerfile with multiple lines, with new line at the end of file."""
         lines = ["# Comment 1\n", "# Comment 2\n"]
         assert list(tokenize_dockerfile(lines)) == [
@@ -180,7 +180,18 @@ class TestTokenizeDockerfile:
             Token("CMD echo \\\n  'hello world'\n"),
         ]
 
-    def test_tokenize_trailing_slash_at_list_line(self):
+    def test_tokenize_trailing_slash_followed_by_empty_line(self):
+        """"Empty line as continuation is deprecated but works."""
+        lines = [
+            "CMD echo \\\n",
+            "\n",
+            "  'hello world'\n",
+        ]
+        assert list(tokenize_dockerfile(lines)) == [
+            Token("CMD echo \\\n\n  'hello world'\n"),
+        ]
+
+    def test_tokenize_trailing_slash_at_last_line(self):
         """"Backslash is at the last line is valid."""
         lines = [
             "CMD echo \\\n",
@@ -193,7 +204,8 @@ class TestTokenizeDockerfile:
         """Comments can be included in multi-line instructions."""
         lines = [
             "CMD echo \\\n",
-            "  # Comment\n" "  'hello world'\n",
+            "  # Comment\n",
+            "  'hello world'\n",
         ]
         assert list(tokenize_dockerfile(lines)) == [
             Token("CMD echo \\\n  # Comment\n  'hello world'\n"),

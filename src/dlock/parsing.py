@@ -95,22 +95,21 @@ def tokenize_dockerfile(lines: Iterable[str]) -> Iterable[Token]:
 
     Each token is one instruction, comment, or an empty line.
     """
-    value = ""
+    token_value = ""
     for line in itertools.chain(lines, [""]):
-        is_comment = line and _is_comment_or_blank(line)
-        if not is_comment and line.rstrip().endswith("\\"):
-            # Backslash is a line continuation character.
-            is_complete = False
-        elif is_comment and value:
-            # Comments are removed, so they do not terminate an expression.
-            is_complete = False
-        else:
-            # Expression has to be complete if continuation is not indicated.
+        if not line:
+            # End of file marker
             is_complete = True
-        value += line
-        if is_complete and value:
-            yield Token(value)
-            value = ""
+        elif _is_comment_or_blank(line):
+            # Comments are removed, so they do not terminate an expression.
+            is_complete = not token_value
+        else:
+            # Backslash is a line continuation character.
+            is_complete = not line.rstrip().endswith("\\")
+        token_value += line
+        if is_complete and token_value:
+            yield Token(token_value)
+            token_value = ""
 
 
 class InvalidInstruction(Exception):
