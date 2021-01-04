@@ -14,66 +14,13 @@
 
 import pytest
 
-from dlock.parsing import (
+from dlock.instructions import (
+    CopyInstruction,
     FromInstruction,
     GenericInstruction,
     InvalidInstruction,
-    get_token_cmd,
-    get_token_code,
-    parse_dockerfile,
-    tokenize_dockerfile,
 )
-
-
-class TestTokenHelpers:
-    """
-    Tests the Token class.
-    """
-
-    @pytest.mark.parametrize(
-        "token",
-        [
-            "",
-            "  ",
-            "\n",
-            "  \n",
-        ],
-    )
-    def test_empty(self, token):
-        assert get_token_cmd(token) == ""
-        assert get_token_code(token) == ""
-
-    @pytest.mark.parametrize(
-        "token",
-        [
-            "# Comment",
-            "# Comment\n",
-            "  # Comment\n",
-        ],
-    )
-    def test_comment(self, token):
-        assert get_token_cmd(token) == ""
-        assert get_token_code(token) == ""
-
-    @pytest.mark.parametrize(
-        "token",
-        [
-            "FROM",
-            "FROM\n",
-            "FROM debian",
-            "FROM debian\n",
-            "  FROM debian\n",
-            "from debian\n",
-            "FROM debian \\\n  AS base\n",
-            "FROM debian \\\n  # Comment \n AS base\n",
-        ],
-    )
-    def test_get_token_cmd(self, token):
-        assert get_token_cmd(token) == "FROM"
-
-    def test_get_token_code(self):
-        code = get_token_code("FROM debian \\\n  # Comment \n  AS base\n")
-        assert code == "FROM debian AS base"
+from dlock.parsing import parse_dockerfile, tokenize_dockerfile
 
 
 class TestTokenizeDockerfile:
@@ -208,76 +155,6 @@ class TestTokenizeDockerfile:
         ]
 
 
-class TestFromInstruction:
-    """
-    Tests Instruction subclasses.
-    """
-
-    def test_from_string(self):
-        inst = FromInstruction.from_string("FROM debian")
-        assert inst == FromInstruction("debian")
-
-    def test_from_string_w_name(self):
-        inst = FromInstruction.from_string("FROM debian AS base")
-        assert inst == FromInstruction("debian", "base")
-
-    def test_from_string_w_platform(self):
-        inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian")
-        assert inst == FromInstruction("debian", platform="linux/amd64")
-
-    def test_from_string_w_name_and_platform(self):
-        inst = FromInstruction.from_string("FROM --platform=linux/amd64 debian AS base")
-        assert inst == FromInstruction("debian", "base", platform="linux/amd64")
-
-    def test_from_string_lowercase(self):
-        inst = FromInstruction.from_string("from debian AS base")
-        assert inst == FromInstruction("debian", "base")
-
-    def test_from_string_extra_whitespace(self):
-        inst = FromInstruction.from_string("   from   debian   AS   base  ")
-        assert inst == FromInstruction("debian", "base")
-
-    @pytest.mark.parametrize(
-        "code",
-        [
-            "",
-            "X",
-            "FROM",
-            "FROM debian AS",
-            "FROM debian X base",
-            "FROM debian AS base X",
-            "FROM --foo=linux/amd64",
-            "FROM --foo=linux/amd64 debian",
-            "FROM --platform=linux/amd64 --foo=1",
-        ],
-    )
-    def test_from_string_invalid(self, code):
-        with pytest.raises(InvalidInstruction):
-            FromInstruction.from_string(code)
-
-    def test_to_string(self):
-        inst = FromInstruction("debian")
-        assert str(inst) == "FROM debian\n"
-
-    def test_to_string_w_name(self):
-        inst = FromInstruction("debian", "base")
-        assert str(inst) == "FROM debian AS base\n"
-
-    def test_to_string_w_platform(self):
-        inst = FromInstruction("debian", platform="linux/amd64")
-        assert str(inst) == "FROM --platform=linux/amd64 debian\n"
-
-    def test_to_string_w_name_and_platform(self):
-        inst = FromInstruction("debian", "base", platform="linux/amd64")
-        assert str(inst) == "FROM --platform=linux/amd64 debian AS base\n"
-
-
-class TestGenericInstruction:
-    def test_to_string(self):
-        inst = GenericInstruction("CMD echo \n  'hello world'\n")
-        assert str(inst) == "CMD echo \n  'hello world'\n"
-
-
 class TestParseDockerfile:
     """
     Tests the parse_dockerfile function.
@@ -306,10 +183,15 @@ class TestParseDockerfile:
         nodes = parse_dockerfile(["FROM debian"])
         assert [n.inst for n in nodes] == [FromInstruction("debian")]
 
-    def test_parse_from_inst_invalid(self):
+    def test_parse_from_invalid(self):
         """FROM instruction is not parsed if not valid."""
         with pytest.raises(InvalidInstruction):
             list(parse_dockerfile(["FROM"]))
+
+    def test_parse_copy(self):
+        """FROM instruction is parsed."""
+        nodes = parse_dockerfile(["COPY src dst"])
+        assert [n.inst for n in nodes] == [CopyInstruction("src dst")]
 
     @pytest.mark.parametrize(
         "value",

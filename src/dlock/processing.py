@@ -20,9 +20,10 @@ from __future__ import annotations
 import dataclasses
 from typing import List, Optional
 
+from dlock.instructions import CopyInstruction, FromInstruction, Instruction
 from dlock.io import Dockerfile
 from dlock.output import Log
-from dlock.parsing import FromInstruction, Instruction, parse_dockerfile
+from dlock.parsing import parse_dockerfile
 from dlock.registry import Resolver
 
 
@@ -158,15 +159,26 @@ class DockerfileProcessor:
     ) -> Instruction:
         if isinstance(inst, FromInstruction):
             return self._process_from_instruction(state, inst)
+        elif isinstance(inst, CopyInstruction):
+            return self._process_copy_instruction(state, inst)
         return inst
 
     def _process_from_instruction(
         self, state: ProcessingState, inst: FromInstruction
-    ) -> Instruction:
+    ) -> FromInstruction:
         new_base = self._process_ref(state, inst.base)
         if inst.name is not None:
             state.stages.append(inst.name)
         return inst.replace(base=new_base)
+
+    def _process_copy_instruction(
+        self, state: ProcessingState, inst: CopyInstruction
+    ) -> CopyInstruction:
+        from_image = inst.flags.get("from")
+        if from_image is None:
+            return inst
+        new_from_image = self._process_ref(state, from_image)
+        return inst.replace(from_image=new_from_image)
 
     def _process_ref(self, state: ProcessingState, ref: str) -> str:
         position = f"{state.position}: image {ref}"
