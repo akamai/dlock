@@ -19,8 +19,8 @@ from dlock.parsing import (
     GenericInstruction,
     InvalidInstruction,
     get_token_cmd,
-    get_token_code,
     parse_dockerfile,
+    split_token,
     tokenize_dockerfile,
 )
 
@@ -41,7 +41,7 @@ class TestTokenHelpers:
     )
     def test_empty(self, token):
         assert get_token_cmd(token) == ""
-        assert get_token_code(token) == ""
+        assert split_token(token) == ("", {}, "")
 
     @pytest.mark.parametrize(
         "token",
@@ -53,7 +53,7 @@ class TestTokenHelpers:
     )
     def test_comment(self, token):
         assert get_token_cmd(token) == ""
-        assert get_token_code(token) == ""
+        assert split_token(token) == ("", {}, "")
 
     @pytest.mark.parametrize(
         "token",
@@ -71,9 +71,17 @@ class TestTokenHelpers:
     def test_get_token_cmd(self, token):
         assert get_token_cmd(token) == "FROM"
 
-    def test_get_token_code(self):
-        code = get_token_code("FROM debian \\\n  # Comment \n  AS base\n")
-        assert code == "FROM debian AS base"
+    def test_split_token(self):
+        token = "FROM debian AS base"
+        assert split_token(token) == ("FROM", {}, "debian AS base")
+
+    def test_split_token_w_flags(self):
+        token = "FROM --platform=linux/amd64 debian"
+        assert split_token(token) == ("FROM", {"platform": "linux/amd64"}, "debian")
+
+    def test_split_token_multiline(self):
+        token = "FROM debian \\\n  # Comment \n  AS base\n"
+        assert split_token(token) == ("FROM", {}, "debian AS base")
 
 
 class TestTokenizeDockerfile:

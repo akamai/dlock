@@ -24,7 +24,7 @@ from __future__ import annotations
 import dataclasses
 import itertools
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, Mapping, Optional, Type
+from typing import Iterable, Mapping, Optional, Tuple, Type
 
 # Parsing is done in two steps:
 #
@@ -89,9 +89,23 @@ def get_token_cmd(token: str) -> str:
     return value.split()[0].upper()
 
 
-def get_token_code(token: str) -> str:
+def _pop_arg(value: str) -> Tuple[str, str]:
+    parts = value.split(maxsplit=1)
+    head = parts[0] if len(parts) > 0 else ""
+    rest = parts[1] if len(parts) > 1 else ""
+    return head, rest
+
+
+def split_token(token: str) -> Tuple[str, Mapping[str, str], str]:
     lines = token.splitlines()
-    return " ".join(_strip_line(line) for line in lines if _is_command(line))
+    code = " ".join(_strip_line(line) for line in lines if _is_command(line))
+    cmd, rest = _pop_arg(code)
+    flags = {}
+    while rest.startswith("--"):
+        flag, rest = _pop_arg(rest)
+        key, _, value = flag.partition("=")
+        flags[key[2:]] = value
+    return cmd.upper(), flags, rest
 
 
 class InvalidInstruction(Exception):
@@ -126,19 +140,16 @@ class FromInstruction(Instruction):
 
     @classmethod
     def from_string(cls, value: str) -> FromInstruction:
-        parts = get_token_code(value).split()
-        # FROM ...
-        if not parts or parts[0].upper() != "FROM":
+        cmd, flags, rest = split_token(value)
+        if cmd != "FROM":
             raise InvalidInstruction("Not a FROM instruction.")
-        parts = parts[1:]
-        # --platform=...
         platform = None
-        while parts and parts[0].startswith("--"):
-            if parts[0].startswith("--platform"):
-                platform = parts[0][11:]
+        for key, value in flags.items():
+            if key == "platform":
+                platform = value
             else:
-                raise InvalidInstruction(f"FROM with an unknown flag: {parts[0]}")
-            parts = parts[1:]
+                raise InvalidInstruction(f"FROM with an unknown flag: --{key}")
+        parts = rest.split()
         # Base image
         if not parts:
             raise InvalidInstruction("FROM with too few arguments.")
