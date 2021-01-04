@@ -15,16 +15,13 @@
 import pytest
 
 from dlock.parsing import (
-    Dockerfile,
     FromInstruction,
     GenericInstruction,
     InvalidInstruction,
     get_token_cmd,
     get_token_code,
     parse_dockerfile,
-    read_dockerfile,
     tokenize_dockerfile,
-    write_dockerfile,
 )
 
 
@@ -327,18 +324,3 @@ class TestParseDockerfile:
         """Most instruction are treated as unparsed strings."""
         instructions = parse_dockerfile([value])
         assert list(instructions) == [GenericInstruction(value)]
-
-
-def test_read_dockerfile(resolver, tmp_path):
-    path = tmp_path / "Dockerfile"
-    path.write_text("FROM debian\n")
-    dockerfile = read_dockerfile(path)
-    assert dockerfile.name == path
-    assert dockerfile.lines == ["FROM debian\n"]
-
-
-def test_write_dockerfile(tmp_path):
-    path = tmp_path / "Dockerfile"
-    dockerfile = Dockerfile(["FROM debian\n"], name=path)
-    write_dockerfile(dockerfile, path=dockerfile.name)
-    assert path.read_text() == "FROM debian\n"

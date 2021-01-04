@@ -27,8 +27,8 @@ from typing import Optional, Sequence
 import docker
 
 import dlock
+from dlock.io import read_dockerfile, write_dockerfile
 from dlock.output import Log
-from dlock.parsing import read_dockerfile, write_dockerfile
 from dlock.processing import DockerfileProcessor
 from dlock.registry import DockerResolver, Resolver
 

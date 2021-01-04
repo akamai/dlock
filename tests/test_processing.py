@@ -16,8 +16,8 @@ import io
 
 import pytest
 
+from dlock.io import Dockerfile
 from dlock.output import Log
-from dlock.parsing import Dockerfile
 from dlock.processing import DockerfileProcessor, Image
 
 

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Dockerfile parser
 
@@ -19,12 +18,13 @@ Minimal necessary Dockerfile parser which looks
 only for instructions that can reference Docker images.
 Preserves whitespace and formatting where possible.
 """
+
 from __future__ import annotations
 
 import dataclasses
 import itertools
 from abc import ABCMeta, abstractmethod
-from typing import Iterable, List, Optional
+from typing import Iterable, Optional
 
 # Parsing is done in two steps:
 #
@@ -193,31 +193,3 @@ def _parse_tokens(tokens: Iterable[str]) -> Iterable[Instruction]:
 def parse_dockerfile(lines: Iterable[str]) -> Iterable[Instruction]:
     tokens = tokenize_dockerfile(lines)
     return _parse_tokens(tokens)
-
-
-@dataclasses.dataclass(frozen=True)
-class Dockerfile:
-    """
-    Parsed Dockerfile.
-
-    Holds a list of parsed instructions.
-    """
-
-    lines: List[str]
-    name: Optional[str] = None
-
-
-def read_dockerfile(path: str) -> Dockerfile:
-    """
-    Read Dockerfile from the given file-system path.
-    """
-    with open(path) as f:
-        return Dockerfile(f.readlines(), name=path)
-
-
-def write_dockerfile(dockerfile: Dockerfile, path: str) -> None:
-    """
-    Write Dockerfile to the given file-system path.
-    """
-    with open(path, "w") as f:
-        f.writelines(dockerfile.lines)
