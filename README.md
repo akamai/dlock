@@ -123,9 +123,10 @@ pytest
 
 ### v0.2.dev
 
-* Support for FROM instructions with `--platform` specified.
 * Add a `--version` argument.
-* Refactor parsing to preserve more formatting.
+* Lock dependencies referenced in `COPY --from=...`
+* Accept flags (for example `--platform`) in FROM instructions.
+* Refactor Dockerfile parsing to preserve more formatting.
 
 
 ### v0.1 (2020-12-02)
